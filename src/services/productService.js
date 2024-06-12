@@ -34,14 +34,14 @@ export const getProducts = async (
     ...doc.data(),
   }));
 
-  // Filter products by searchTerm if provided
+  // Filtering products by searchTerm 
   if (searchTerm) {
     products = products.filter((product) =>
       product.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
   }
 
-  // Sort products by rating if provided
+  // Sorting products by rating 
   if (sortRating) {
     products.sort((a, b) => {
       if (sortRating === "asc") {
