@@ -24,12 +24,21 @@ import {
   DialogTitle,
   CircularProgress,
   Alert,
+  Fade,
 } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import StarIcon from "@mui/icons-material/Star";
 import StarBorderIcon from "@mui/icons-material/StarBorder";
 import { toast, Toaster } from "react-hot-toast";
+import { styled } from "@mui/system";
+
+const ExpandableCard = styled(Card)(({ theme }) => ({
+  transition: "transform 0.3s ease-in-out",
+  "&:hover": {
+    transform: "scale(1.05)",
+  },
+}));
 
 const Products = () => {
   const [products, setProducts] = useState([]);
@@ -52,10 +61,26 @@ const Products = () => {
   const [loading, setLoading] = useState(false);
   const [openDialog, setOpenDialog] = useState(false);
 
+  const fetchProducts = async () => {
+    setLoading(true);
+    try {
+      const products = await getProducts(
+        filterCategory,
+        sortRating,
+        searchTerm
+      );
+      setProducts(products);
+    } catch (error) {
+      console.error("Error fetching data: ", error);
+    }
+    setLoading(false);
+  };
+
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       try {
+        // Fetch categories
         const fetchedCategories = await getCategories();
         setCategories(fetchedCategories);
 
@@ -66,12 +91,8 @@ const Products = () => {
         }, {});
         setCategoryMap(categoryMap);
 
-        const products = await getProducts(
-          filterCategory,
-          sortRating,
-          searchTerm
-        );
-        setProducts(products);
+        // Fetch products based on filter, sort, and search parameters
+        await fetchProducts();
       } catch (error) {
         console.error("Error fetching data: ", error);
       }
@@ -79,6 +100,10 @@ const Products = () => {
     };
 
     fetchData();
+  }, []);
+
+  useEffect(() => {
+    fetchProducts();
   }, [filterCategory, sortRating, searchTerm]);
 
   const handleAddProduct = async (e) => {
@@ -86,12 +111,7 @@ const Products = () => {
     try {
       await addProduct(newProduct);
       setNewProduct({ name: "", category: "", rating: 1 });
-      const updatedProducts = await getProducts(
-        filterCategory,
-        sortRating,
-        searchTerm
-      );
-      setProducts(updatedProducts);
+      await fetchProducts();
       toast.success("Product added successfully!");
     } catch (error) {
       console.error("Error adding product: ", error);
@@ -99,18 +119,17 @@ const Products = () => {
     }
   };
 
-  const handleUpdateProduct = async (id) => {
+  const handleUpdateProduct = async () => {
     try {
-      await updateProduct(id, editingData);
-      setEditingProduct(null);
-      setOpenDialog(false);
-      const updatedProducts = await getProducts(
-        filterCategory,
-        sortRating,
-        searchTerm
-      );
-      setProducts(updatedProducts);
-      toast.success("Product updated successfully!");
+      if (editingProduct) {
+        await updateProduct(editingProduct.id, editingData);
+        setEditingProduct(null);
+        setOpenDialog(false);
+        await fetchProducts();
+        toast.success("Product updated successfully!");
+      } else {
+        toast.error("No product selected for update");
+      }
     } catch (error) {
       console.error("Error updating product: ", error);
       toast.error("Error updating product");
@@ -120,12 +139,7 @@ const Products = () => {
   const handleDeleteProduct = async (id) => {
     try {
       await deleteProduct(id);
-      const updatedProducts = await getProducts(
-        filterCategory,
-        sortRating,
-        searchTerm
-      );
-      setProducts(updatedProducts);
+      await fetchProducts();
       toast.success("Product deleted successfully!");
     } catch (error) {
       console.error("Error deleting product: ", error);
@@ -135,16 +149,7 @@ const Products = () => {
 
   const handleSearch = async (e) => {
     e.preventDefault();
-    try {
-      const filteredProducts = await getProducts(
-        filterCategory,
-        sortRating,
-        searchTerm
-      );
-      setProducts(filteredProducts);
-    } catch (error) {
-      console.error("Error searching products: ", error);
-    }
+    await fetchProducts();
   };
 
   const renderRating = (rating) => {
@@ -293,8 +298,8 @@ const Products = () => {
           <MenuItem value="" disabled>
             Sort by Rating
           </MenuItem>
-          <MenuItem value="asc">Ascending</MenuItem>
-          <MenuItem value="desc">Descending</MenuItem>
+          <MenuItem value="asc">Rating : Low to High</MenuItem>
+          <MenuItem value="desc">Rating : High to Low</MenuItem>
         </Select>
       </Box>
       <Box
@@ -306,144 +311,141 @@ const Products = () => {
           mb: 2, // Bottom margin
         }}
       />
-
       {loading ? (
-        <div>
-          <CircularProgress />
-        </div>
+        <CircularProgress />
+      ) : products.length === 0 ? (
+        <Fade in={true}>
+          <Alert severity="info">No products found.</Alert>
+        </Fade>
       ) : (
-        <>
-          {products.length === 0 ? (
-            <Box sx={{ mt: 2 }}>
-              <Alert severity="info">No products found.</Alert>
-            </Box>
-          ) : (
-            <Grid container spacing={2}>
-              {products.map((product) => (
-                <Grid item xs={12} sm={6} md={4} lg={3} key={product.id}>
-                  <Card
-                    sx={{
-                      transition: "transform 0.5s, box-shadow 0.5s",
-                      "&:hover": {
-                        transform: "scale(1.03)",
-                        boxShadow: 6,
-                      },
-                      display: "flex",
-                      flexDirection: "column",
-                      justifyContent: "space-between",
-                      height: "100%",
+        <Grid container spacing={2}>
+          {products.map((product) => (
+            <Grid item xs={12} sm={6} md={4} lg={3} key={product.id}>
+              <Card
+                sx={{
+                  transition: "transform 0.5s, box-shadow 0.5s",
+                  "&:hover": {
+                    transform: "scale(1.03)",
+                    boxShadow: 6,
+                  },
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "space-between",
+                  height: "100%",
+                }}
+              >
+                <CardContent
+                  sx={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                  }}
+                >
+                  <Typography
+                    variant="h6"
+                    component="div"
+                    sx={{ fontWeight: "bold", mb: 1 }}
+                  >
+                    {product.name}
+                  </Typography>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    component="div"
+                    sx={{ mb: 2 }}
+                  >
+                    {categoryMap[product.category]}
+                  </Typography>
+                  {renderRating(product.rating)}
+                </CardContent>
+                <Box
+                  sx={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    p: 1,
+                    borderTop: "1px solid #f0f0f0",
+                  }}
+                >
+                  <IconButton
+                    onClick={() => {
+                      setEditingProduct(product);
+                      setEditingData({
+                        name: product.name,
+                        category: product.category,
+                        rating: product.rating,
+                      });
+                      setOpenDialog(true);
                     }}
                   >
-                    <CardContent
-                      sx={{
-                        display: "flex",
-                        flexDirection: "column",
-                        alignItems: "center",
-                      }}
-                    >
-                      <Typography
-                        variant="h6"
-                        component="div"
-                        sx={{ fontWeight: "bold", mb: 1 }}
-                      >
-                        {product.name}
-                      </Typography>
-                      <Typography
-                        variant="body2"
-                        color="text.secondary"
-                        component="div"
-                        sx={{ mb: 2 }}
-                      >
-                        {categoryMap[product.category]}
-                      </Typography>
-                      {renderRating(product.rating)}
-                    </CardContent>
-                    <Box
-                      sx={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        p: 1,
-                        borderTop: "1px solid #f0f0f0",
-                      }}
-                    >
-                      <IconButton
-                        onClick={() => {
-                          setEditingProduct(product);
-                          setEditingData({
-                            name: product.name,
-                            category: product.category,
-                            rating: product.rating,
-                          });
-                          setOpenDialog(true);
-                        }}
-                      >
-                        <EditIcon sx={{ color: "primary.main" }} />
-                      </IconButton>
-                      <IconButton
-                        onClick={() => handleDeleteProduct(product.id)}
-                      >
-                        <DeleteIcon sx={{ color: "error.main" }} />
-                      </IconButton>
-                    </Box>
-                  </Card>
-                </Grid>
-              ))}
+                    <EditIcon sx={{ color: "primary.main" }} />
+                  </IconButton>
+                  <IconButton onClick={() => handleDeleteProduct(product.id)}>
+                    <DeleteIcon sx={{ color: "error.main" }} />
+                  </IconButton>
+                </Box>
+              </Card>
             </Grid>
-          )}
-        </>
+          ))}
+        </Grid>
       )}
 
       <Dialog open={openDialog} onClose={() => setOpenDialog(false)}>
         <DialogTitle>Edit Product</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            Edit the details of the product.
+            Please update the product details as needed.
           </DialogContentText>
-          <TextField
-            margin="dense"
-            label="Product Name"
-            type="text"
-            fullWidth
-            value={editingData.name}
-            onChange={(e) =>
-              setEditingData({ ...editingData, name: e.target.value })
-            }
-          />
-          <Select
-            fullWidth
-            value={editingData.category}
-            onChange={(e) =>
-              setEditingData({ ...editingData, category: e.target.value })
-            }
-            displayEmpty
+          <br />
+          <Box
+            component="form"
+            sx={{ display: "flex", flexDirection: "column", gap: 2 }}
           >
-            <MenuItem value="" disabled>
-              Select Category
-            </MenuItem>
-            {categories.map((category) => (
-              <MenuItem key={category.id} value={category.id}>
-                {category.name}
+            <TextField
+              label="Product Name"
+              value={editingData.name}
+              onChange={(e) =>
+                setEditingData({ ...editingData, name: e.target.value })
+              }
+              required
+              fullWidth
+            />
+            <Select
+              value={editingData.category}
+              onChange={(e) =>
+                setEditingData({ ...editingData, category: e.target.value })
+              }
+              displayEmpty
+              required
+              fullWidth
+            >
+              <MenuItem value="" disabled>
+                Select Category
               </MenuItem>
-            ))}
-          </Select>
-          <TextField
-            margin="dense"
-            label="Rating"
-            type="number"
-            fullWidth
-            value={editingData.rating}
-            onChange={(e) =>
-              setEditingData({ ...editingData, rating: e.target.value })
-            }
-            inputProps={{ min: 1, max: 5 }}
-          />
+              {categories.map((category) => (
+                <MenuItem key={category.id} value={category.id}>
+                  {category.name}
+                </MenuItem>
+              ))}
+            </Select>
+            <TextField
+              label="Rating"
+              type="number"
+              value={editingData.rating}
+              onChange={(e) =>
+                setEditingData({ ...editingData, rating: e.target.value })
+              }
+              inputProps={{ min: 1, max: 5 }}
+              required
+              fullWidth
+            />
+          </Box>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenDialog(false)} color="primary">
             Cancel
           </Button>
           <Button
-            onClick={() => handleUpdateProduct(editingProduct.id)}
+            onClick={() => handleUpdateProduct(editingProduct)}
             color="primary"
           >
             Save
