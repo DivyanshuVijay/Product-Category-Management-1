@@ -18,23 +18,15 @@ export const getProducts = async (
   sortRating = "",
   searchTerm = ""
 ) => {
-  let q = productCollection;
+  let constraints = [];
 
-  // Build the query based on provided parameters
-  if (filterCategory && sortRating) {
-    q = query(
-      productCollection,
-      where("category", "==", filterCategory),
-      orderBy("rating", sortRating === "asc" ? "asc" : "desc")
-    );
-  } else if (filterCategory) {
-    q = query(productCollection, where("category", "==", filterCategory));
-  } else if (sortRating) {
-    q = query(
-      productCollection,
-      orderBy("rating", sortRating === "asc" ? "asc" : "desc")
-    );
+  if (filterCategory) {
+    constraints.push(where("category", "==", filterCategory));
   }
+
+  let q = constraints.length
+    ? query(productCollection, ...constraints)
+    : productCollection;
 
   const productSnapshot = await getDocs(q);
   let products = productSnapshot.docs.map((doc) => ({
@@ -47,6 +39,17 @@ export const getProducts = async (
     products = products.filter((product) =>
       product.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
+  }
+
+  // Sort products by rating if provided
+  if (sortRating) {
+    products.sort((a, b) => {
+      if (sortRating === "asc") {
+        return a.rating - b.rating;
+      } else {
+        return b.rating - a.rating;
+      }
+    });
   }
 
   return products;
