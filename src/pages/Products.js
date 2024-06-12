@@ -66,15 +66,12 @@ const Products = () => {
         }, {});
         setCategoryMap(categoryMap);
 
-        const products = await getProducts();
-        setProducts(
-          sortAndFilterProducts(
-            products,
-            searchTerm,
-            filterCategory,
-            sortRating
-          )
+        const products = await getProducts(
+          filterCategory,
+          sortRating,
+          searchTerm
         );
+        setProducts(products);
       } catch (error) {
         console.error("Error fetching data: ", error);
       }
@@ -82,51 +79,19 @@ const Products = () => {
     };
 
     fetchData();
-  }, [filterCategory, searchTerm, sortRating]);
-
-  const sortAndFilterProducts = (
-    products,
-    searchTerm,
-    filterCategory,
-    sortRating
-  ) => {
-    let filteredProducts = products;
-
-    if (searchTerm) {
-      filteredProducts = filteredProducts.filter((product) =>
-        product.name.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
-
-    if (filterCategory) {
-      filteredProducts = filteredProducts.filter(
-        (product) => product.category === filterCategory
-      );
-    }
-
-    if (sortRating === "asc") {
-      filteredProducts.sort((a, b) => a.rating - b.rating);
-    } else if (sortRating === "desc") {
-      filteredProducts.sort((a, b) => b.rating - a.rating);
-    }
-
-    return filteredProducts;
-  };
+  }, [filterCategory, sortRating, searchTerm]);
 
   const handleAddProduct = async (e) => {
     e.preventDefault();
     try {
       await addProduct(newProduct);
       setNewProduct({ name: "", category: "", rating: 1 });
-      const updatedProducts = await getProducts();
-      setProducts(
-        sortAndFilterProducts(
-          updatedProducts,
-          searchTerm,
-          filterCategory,
-          sortRating
-        )
+      const updatedProducts = await getProducts(
+        filterCategory,
+        sortRating,
+        searchTerm
       );
+      setProducts(updatedProducts);
       toast.success("Product added successfully!");
     } catch (error) {
       console.error("Error adding product: ", error);
@@ -139,15 +104,12 @@ const Products = () => {
       await updateProduct(id, editingData);
       setEditingProduct(null);
       setOpenDialog(false);
-      const updatedProducts = await getProducts();
-      setProducts(
-        sortAndFilterProducts(
-          updatedProducts,
-          searchTerm,
-          filterCategory,
-          sortRating
-        )
+      const updatedProducts = await getProducts(
+        filterCategory,
+        sortRating,
+        searchTerm
       );
+      setProducts(updatedProducts);
       toast.success("Product updated successfully!");
     } catch (error) {
       console.error("Error updating product: ", error);
@@ -158,15 +120,12 @@ const Products = () => {
   const handleDeleteProduct = async (id) => {
     try {
       await deleteProduct(id);
-      const updatedProducts = await getProducts();
-      setProducts(
-        sortAndFilterProducts(
-          updatedProducts,
-          searchTerm,
-          filterCategory,
-          sortRating
-        )
+      const updatedProducts = await getProducts(
+        filterCategory,
+        sortRating,
+        searchTerm
       );
+      setProducts(updatedProducts);
       toast.success("Product deleted successfully!");
     } catch (error) {
       console.error("Error deleting product: ", error);
@@ -177,15 +136,12 @@ const Products = () => {
   const handleSearch = async (e) => {
     e.preventDefault();
     try {
-      const filteredProducts = await getProducts();
-      setProducts(
-        sortAndFilterProducts(
-          filteredProducts,
-          searchTerm,
-          filterCategory,
-          sortRating
-        )
+      const filteredProducts = await getProducts(
+        filterCategory,
+        sortRating,
+        searchTerm
       );
+      setProducts(filteredProducts);
     } catch (error) {
       console.error("Error searching products: ", error);
     }

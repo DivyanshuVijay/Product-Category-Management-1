@@ -13,15 +13,23 @@ import { db } from "../firebase-config";
 
 const productCollection = collection(db, "products");
 
-export const getProducts = async (filterCategory = "", sortRating = "") => {
+export const getProducts = async (
+  filterCategory = "",
+  sortRating = "",
+  searchTerm = ""
+) => {
   let q = productCollection;
 
-  // Check if only filterCategory is provided
-  if (filterCategory) {
+  // Build the query based on provided parameters
+  if (filterCategory && sortRating) {
+    q = query(
+      productCollection,
+      where("category", "==", filterCategory),
+      orderBy("rating", sortRating === "asc" ? "asc" : "desc")
+    );
+  } else if (filterCategory) {
     q = query(productCollection, where("category", "==", filterCategory));
-  }
-  // Check if only sortRating is provided
-  else if (sortRating) {
+  } else if (sortRating) {
     q = query(
       productCollection,
       orderBy("rating", sortRating === "asc" ? "asc" : "desc")
@@ -29,7 +37,19 @@ export const getProducts = async (filterCategory = "", sortRating = "") => {
   }
 
   const productSnapshot = await getDocs(q);
-  return productSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+  let products = productSnapshot.docs.map((doc) => ({
+    id: doc.id,
+    ...doc.data(),
+  }));
+
+  // Filter products by searchTerm if provided
+  if (searchTerm) {
+    products = products.filter((product) =>
+      product.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }
+
+  return products;
 };
 
 export const addProduct = async (product) => {
